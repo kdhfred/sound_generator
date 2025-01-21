@@ -26,9 +26,6 @@ public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
     self.panner = AKPanner(self.oscillator, pan: 0.0)
     self.mixer = AKMixer(self.panner!)
     self.mixer!.volume = 1.0
-    AKSettings.disableAVAudioSessionCategoryManagement = true
-    AKSettings.disableAudioSessionDeactivationOnStop = true
-    AKManager.output = self.mixer!
     let methodChannel = FlutterMethodChannel(name: "sound_generator", binaryMessenger: registrar.messenger())
     self.onChangeIsPlaying = BetterEventChannel(name: "io.github.mertguner.sound_generator/onChangeIsPlaying", messenger: registrar.messenger())
     self.onOneCycleDataHandler = BetterEventChannel(name: "io.github.mertguner.sound_generator/onOneCycleDataHandler", messenger: registrar.messenger())
@@ -41,9 +38,15 @@ public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
           result("iOS " + UIDevice.current.systemVersion)
           break
       case "init":
-        //let args = call.arguments as! [String: Any]
-        //let sampleRate = args["sampleRate"] as Int
+        let args = call.arguments as! [String: Any]
+        let sampleRate = args["sampleRate"] as! Int
+        self.sampleRate = sampleRate
         self.oscillator.frequency = 400
+        
+        AKSettings.disableAVAudioSessionCategoryManagement = false
+        AKSettings.disableAudioSessionDeactivationOnStop = false
+        AKManager.output = self.mixer!
+        
         do {
             try AKManager.start()
             result(true);
