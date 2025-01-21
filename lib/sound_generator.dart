@@ -80,7 +80,8 @@ class SoundGenerator {
 
   /// Get PlatformVersion
   static Future<String> get getPlatformVersion async {
-    final String platformVersion = await _channel.invokeMethod('getPlatformVersion');
+    final String platformVersion =
+        await _channel.invokeMethod('getPlatformVersion');
     return platformVersion;
   }
 
@@ -131,13 +132,12 @@ class SoundGenerator {
 
   /// Set Decibel Range from 0 to 20
   static void setDecibel(double dB) async {
-    await _channel
-        .invokeMethod("setDecibel", <String, dynamic>{"dB": dB});
+    await _channel.invokeMethod("setDecibel", <String, dynamic>{"dB": dB});
   }
 
   /// Set whether we start with a clean frequency on play
   static void setCleanStart(bool cleanStart) async {
-    await _channel
-        .invokeMethod("setCleanStart", <String, dynamic>{"cleanStart": cleanStart});
+    await _channel.invokeMethod(
+        "setCleanStart", <String, dynamic>{"cleanStart": cleanStart});
   }
 }

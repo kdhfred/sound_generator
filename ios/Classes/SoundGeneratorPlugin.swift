@@ -3,32 +3,22 @@ import UIKit
 import AudioKit
 
 public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
-  var onChangeIsPlaying: BetterEventChannel?;
-  var onOneCycleDataHandler: BetterEventChannel?;
-  // This is not used yet.
-  var sampleRate: Int = 48000;
-  var isPlaying: Bool = false;
-    
-  var oscillator: AKMorphingOscillator = AKMorphingOscillator(waveformArray: [AKTable(.sine),
-                                                                                AKTable(.square),
-                                                                                AKTable(.triangle),
-                                                                                AKTable(.sawtooth),
-                                                                              ]);
-  var panner: AKPanner?;
-  var mixer: AKMixer?;
+  var onChangeIsPlaying: BetterEventChannel?
+  var onOneCycleDataHandler: BetterEventChannel?
+  var sampleRate: Int = 48000
+  var isPlaying: Bool = false
+
+  // AudioKit components
+  var oscillator: AKMorphingOscillator?
+  var panner: AKPanner?
+  var mixer: AKMixer?
 
   public static func register(with registrar: FlutterPluginRegistrar) {
-    /*let instance =*/ _ = SwiftSoundGeneratorPlugin(registrar: registrar)
+    _ = SwiftSoundGeneratorPlugin(registrar: registrar)
   }
 
   public init(registrar: FlutterPluginRegistrar) {
     super.init()
-    self.panner = AKPanner(self.oscillator, pan: 0.0)
-    self.mixer = AKMixer(self.panner!)
-    self.mixer!.volume = 1.0
-    AKSettings.disableAVAudioSessionCategoryManagement = true
-    AKSettings.disableAudioSessionDeactivationOnStop = true
-    AKManager.output = self.mixer!
     let methodChannel = FlutterMethodChannel(name: "sound_generator", binaryMessenger: registrar.messenger())
     self.onChangeIsPlaying = BetterEventChannel(name: "io.github.mertguner.sound_generator/onChangeIsPlaying", messenger: registrar.messenger())
     self.onOneCycleDataHandler = BetterEventChannel(name: "io.github.mertguner.sound_generator/onOneCycleDataHandler", messenger: registrar.messenger())
@@ -37,102 +27,182 @@ public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     switch call.method {
-        case "getPlatformVersion":
-          result("iOS " + UIDevice.current.systemVersion)
-          break
-      case "init":
-        //let args = call.arguments as! [String: Any]
-        //let sampleRate = args["sampleRate"] as Int
-        self.oscillator.frequency = 400
-        do {
-            try AKManager.start()
-            result(true);
-        } catch {
-            result(FlutterError(
-                code: "init_error",
-                message: "Unable to start AKManager",
-                details: ""))
-        }
-        break
-      case "release":
-        result(nil);
-        break;
-      case "play":
-        self.oscillator.start()
-        onChangeIsPlaying!.sendEvent(event: true)
-        result(nil);
-        break;
-      case "stop":
-        self.oscillator.stop();
-        onChangeIsPlaying!.sendEvent(event: false)
-        result(nil);
-        break;
-      case "dB":
-        result(self.getDecibel());
-        break;
-      case "volume":
-        result(self.getVolume());
-        break;
-      case "isPlaying":
-        result(self.isPlaying);
-        break;
-      case "setAutoUpdateOneCycleSample":
-        result(nil);
-        break;
-      case "setFrequency":
-        let args = call.arguments as! [String: Any]
-        self.oscillator.frequency = args["frequency"] as! Double
-        result(nil);
-        break;
-      case "setWaveform":
-        let args = call.arguments as! [String: Any]
-        let waveType = args["waveType"] as! String
-        
-        switch waveType {
-            
-        case "SINUSOIDAL":
-            self.oscillator.index = 0
-            
-        case "SQUAREWAVE":
-            self.oscillator.index = 1
-            
-        case "TRIANGLE":
-            self.oscillator.index = 2
-            
-        case "SAWTOOTH":
-            self.oscillator.index = 3
-            
-        default:
-            self.oscillator.index = 0
-        }
+    case "getPlatformVersion":
+      result("iOS " + UIDevice.current.systemVersion)
+      
+    case "init":
+      initializeAudioKit(call, result: result)
 
-        result(nil)
-        break;
-      case "setBalance":
-        let args = call.arguments as! [String: Any]
-        self.panner!.pan = args["balance"] as! Double
-        break;
-      case "setVolume":
-        let args = call.arguments as! [String: Any]
-        let volume = max(0, min(1, args["volume"] as! Double))
-        self.mixer!.volume = volume
-        result(nil);
-        break;
-      case "setDecibel":
-        let args = call.arguments as! [String: Any]
-        let dB = max(0, min(-20, args["dB"] as! Double))
-        let lineerVolume = pow(10.0, dB / 20.0)
-        self.mixer!.volume = lineerVolume
-        result(nil);
-        break;
-      case "getSampleRate":
-        result(self.sampleRate);
-        break;
-      case "refreshOneCycleData":
-        result(nil);
-        break;
-      default:
-        result(FlutterMethodNotImplemented);
+    case "release":
+      releaseAudioKit(result: result)
+
+    case "play":
+      startPlaying(result: result)
+
+    case "stop":
+      stopPlaying(result: result)
+
+    case "setFrequency":
+      let args = call.arguments as! [String: Any]
+      setFrequency(args, result: result)
+
+    case "setWaveform":
+      let args = call.arguments as! [String: Any]
+      setWaveform(args, result: result)
+
+    case "setBalance":
+      let args = call.arguments as! [String: Any]
+      setBalance(args, result: result)
+
+    case "setVolume":
+      let args = call.arguments as! [String: Any]
+      setVolume(args, result: result)
+
+    case "setDecibel":
+      let args = call.arguments as! [String: Any]
+      setDecibel(args, result: result)
+
+    case "getDecibel":
+      getDecibel(result: result)
+
+    default:
+      result(FlutterMethodNotImplemented)
     }
   }
+
+  // Initialize AudioKit only when the `init` method is called
+  private func initializeAudioKit(_ call: FlutterMethodCall, result: FlutterResult) {
+    let args = call.arguments as! [String: Any]
+    self.sampleRate = args["sampleRate"] as? Int ?? 48000
+
+    self.oscillator = AKMorphingOscillator(waveformArray: [
+      AKTable(.sine),
+      AKTable(.square),
+      AKTable(.triangle),
+      AKTable(.sawtooth)
+    ])
+    self.panner = AKPanner(self.oscillator!, pan: 0.0)
+    self.mixer = AKMixer(self.panner!)
+    self.mixer?.volume = 1.0
+
+    AKSettings.disableAVAudioSessionCategoryManagement = true
+    AKSettings.disableAudioSessionDeactivationOnStop = true
+    AKManager.output = self.mixer
+
+    do {
+      try AKManager.start()
+      result(true)
+    } catch {
+      result(FlutterError(code: "init_error", message: "Unable to start AKManager", details: error.localizedDescription))
+    }
+  }
+
+  // Release AudioKit resources
+  private func releaseAudioKit(result: FlutterResult) {
+    do {
+      try AKManager.stop()
+      self.oscillator = nil
+      self.panner = nil
+      self.mixer = nil
+      result(nil)
+    } catch {
+      result(FlutterError(code: "release_error", message: "Unable to stop AKManager", details: error.localizedDescription))
+    }
+  }
+
+  private func startPlaying(result: FlutterResult) {
+    guard let oscillator = self.oscillator else {
+      result(FlutterError(code: "not_initialized", message: "Sound generator not initialized", details: nil))
+      return
+    }
+    oscillator.start()
+    self.isPlaying = true
+    onChangeIsPlaying?.sendEvent(event: true)
+    result(nil)
+  }
+
+  private func stopPlaying(result: FlutterResult) {
+    guard let oscillator = self.oscillator else {
+      result(FlutterError(code: "not_initialized", message: "Sound generator not initialized", details: nil))
+      return
+    }
+    oscillator.stop()
+    self.isPlaying = false
+    onChangeIsPlaying?.sendEvent(event: false)
+    result(nil)
+  }
+
+  private func setFrequency(_ args: [String: Any], result: FlutterResult) {
+    guard let oscillator = self.oscillator else {
+      result(FlutterError(code: "not_initialized", message: "Sound generator not initialized", details: nil))
+      return
+    }
+    oscillator.frequency = args["frequency"] as? Double ?? 400.0
+    result(nil)
+  }
+
+  private func setWaveform(_ args: [String: Any], result: FlutterResult) {
+    guard let oscillator = self.oscillator else {
+      result(FlutterError(code: "not_initialized", message: "Sound generator not initialized", details: nil))
+      return
+    }
+    let waveType = args["waveType"] as? String ?? "SINUSOIDAL"
+    switch waveType {
+    case "SINUSOIDAL":
+      oscillator.index = 0
+    case "SQUAREWAVE":
+      oscillator.index = 1
+    case "TRIANGLE":
+      oscillator.index = 2
+    case "SAWTOOTH":
+      oscillator.index = 3
+    default:
+      oscillator.index = 0
+    }
+    result(nil)
+  }
+
+  private func setBalance(_ args: [String: Any], result: FlutterResult) {
+    guard let panner = self.panner else {
+      result(FlutterError(code: "not_initialized", message: "Sound generator not initialized", details: nil))
+      return
+    }
+    panner.pan = args["balance"] as? Double ?? 0.0
+    result(nil)
+  }
+
+  private func setVolume(_ args: [String: Any], result: FlutterResult) {
+    guard let mixer = self.mixer else {
+      result(FlutterError(code: "not_initialized", message: "Sound generator not initialized", details: nil))
+      return
+    }
+    mixer.volume = args["volume"] as? Double ?? 1.0
+    result(nil)
+  }
+
+  private func getVolume(result: FlutterResult) {
+    guard let mixer = self.mixer else {
+      result(FlutterError(code: "not_initialized", message: "Sound generator not initialized", details: nil))
+      return
+    }
+    result(mixer.volume)
+  }
+
+  private func setDecibel(_ args: [String: Any], result: FlutterResult) {
+    guard let mixer = self.mixer else {
+      result(FlutterError(code: "not_initialized", message: "Sound generator not initialized", details: nil))
+      return
+    }
+    mixer.volume = pow(10, args["decibel"] as? Double ?? 0.0 / 20.0)
+    result(nil)
+  }
+
+  private func getDecibel(result: FlutterResult) {
+    guard let mixer = self.mixer else {
+      result(FlutterError(code: "not_initialized", message: "Sound generator not initialized", details: nil))
+      return
+    }
+    result(mixer.volume)
+  }
+
 }
