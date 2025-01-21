@@ -138,4 +138,12 @@ public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
         result(FlutterMethodNotImplemented);
     }
   }
+
+  func getDecibel() -> Double {
+    return self.mixer!.volume
+  }
+
+  func getVolume() -> Double {
+    return self.mixer!.volume
+  }
 }
