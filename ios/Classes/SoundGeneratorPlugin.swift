@@ -3,6 +3,7 @@ import UIKit
 import AudioKit
 
 public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
+  private static var instance: SwiftSoundGeneratorPlugin?
   var onChangeIsPlaying: BetterEventChannel?
   var onOneCycleDataHandler: BetterEventChannel?
   var sampleRate: Int = 48000
@@ -14,7 +15,12 @@ public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
   var mixer: AKMixer?
 
   public static func register(with registrar: FlutterPluginRegistrar) {
-    _ = SwiftSoundGeneratorPlugin(registrar: registrar)
+    if let existingInstance = instance {
+      existingInstance.releaseAudioKit(result: nil)
+      existingInstance.onChangeIsPlaying = nil
+      existingInstance.onOneCycleDataHandler = nil
+    }
+    instance = SwiftSoundGeneratorPlugin(registrar: registrar)
   }
 
   public init(registrar: FlutterPluginRegistrar) {
@@ -75,6 +81,16 @@ public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
     let args = call.arguments as! [String: Any]
     self.sampleRate = args["sampleRate"] as? Int ?? 48000
 
+    // 기존 AudioKit 인스턴스가 있다면 먼저 정리
+    if AKManager.engine.isRunning {
+      do {
+        try AKManager.stop()
+      } catch {
+        result(FlutterError(code: "init_error", message: "Unable to stop previous AKManager", details: error.localizedDescription))
+        return
+      }
+    }
+
     self.oscillator = AKMorphingOscillator(waveformArray: [
       AKTable(.sine),
       AKTable(.square),
@@ -121,12 +137,6 @@ public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
     } catch {
       result?(FlutterError(code: "release_error", message: "Unable to stop AKManager", details: error.localizedDescription))
     }
-  }
-
-  public func detachFromEngine(for registrar: FlutterPluginRegistrar) {
-    releaseAudioKit(result: nil)
-    onChangeIsPlaying = nil
-    onOneCycleDataHandler = nil
   }
 
   private func startPlaying(result: FlutterResult) {
