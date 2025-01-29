@@ -84,7 +84,7 @@ public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
     self.panner = AKPanner(self.oscillator!, pan: 0.0)
     self.mixer = AKMixer(self.panner!)
     self.mixer?.volume = 1.0
-
+    
     AKSettings.disableAVAudioSessionCategoryManagement = true
     AKSettings.disableAudioSessionDeactivationOnStop = true
     AKManager.output = self.mixer
@@ -98,16 +98,35 @@ public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
   }
 
   // Release AudioKit resources
-  private func releaseAudioKit(result: FlutterResult) {
+  private func releaseAudioKit(result: FlutterResult?) {
+    if isPlaying {
+      self.oscillator?.stop()
+      self.isPlaying = false
+      onChangeIsPlaying?.sendEvent(event: false)
+    }
+    
     do {
-      try AKManager.stop()
+      if AKManager.engine.isRunning {
+        self.oscillator?.detach()
+        self.panner?.detach()
+        self.mixer?.detach()
+        try AKManager.stop()
+      }
+      
       self.oscillator = nil
       self.panner = nil
       self.mixer = nil
-      result(nil)
+      
+      result?(nil)
     } catch {
-      result(FlutterError(code: "release_error", message: "Unable to stop AKManager", details: error.localizedDescription))
+      result?(FlutterError(code: "release_error", message: "Unable to stop AKManager", details: error.localizedDescription))
     }
+  }
+
+  public func detachFromEngine(for registrar: FlutterPluginRegistrar) {
+    releaseAudioKit(result: nil)
+    onChangeIsPlaying = nil
+    onOneCycleDataHandler = nil
   }
 
   private func startPlaying(result: FlutterResult) {
