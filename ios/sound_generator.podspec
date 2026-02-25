@@ -14,21 +14,17 @@ A new Flutter plugin.
   s.author           = { 'Your Company' => 'email@example.com' }
   s.source           = { :path => '.', :submodules => true }
   s.source_files = 'Classes/**/*'
-  s.xcconfig = { 'USER_HEADER_SEARCH_PATHS' => '"${PROJECT_DIR}/.."/Classes/CallbackManager/*,"${PROJECT_DIR}/.."/Classes/Scheduler/*' }
   s.dependency 'Flutter'
   # TODO: We actually require >=4.11.1 and <5
   s.dependency 'AudioKit', '<5'
   s.static_framework = true
-  s.platform = :ios, '12.0'
+  s.platform = :ios, '13.0'
 
-  # # Flutter.framework does not contain a i386 slice.
-  # s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
-  # Flutter.framework does not contain a i386 slice. Only x86_64 simulators are supported.
-  s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'arm64', 'ENABLE_TESTABILITY' => 'YES' }
-  s.user_target_xcconfig = { 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'arm64' }
+  s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'ENABLE_TESTABILITY' => 'YES' }
   s.swift_version = '5.0'
   s.library = 'c++'
   s.xcconfig = {
+    'USER_HEADER_SEARCH_PATHS' => '"${PROJECT_DIR}/.."/Classes/CallbackManager/*,"${PROJECT_DIR}/.."/Classes/Scheduler/*',
     'CLANG_CXX_LANGUAGE_STANDARD' => 'c++2a',
     'CLANG_CXX_LIBRARY' => 'libc++'
   }

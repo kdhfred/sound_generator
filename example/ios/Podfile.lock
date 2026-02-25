@@ -6,12 +6,15 @@ PODS:
   - AudioKit/UI (4.11.2):
     - AudioKit/Core
   - Flutter (1.0.0)
-  - sound_generator (0.0.1):
-    - AudioKit
+  - integration_test (0.0.1):
+    - Flutter
+  - sound_generator (0.0.11):
+    - AudioKit (< 5)
     - Flutter
 
 DEPENDENCIES:
   - Flutter (from `Flutter`)
+  - integration_test (from `.symlinks/plugins/integration_test/ios`)
   - sound_generator (from `.symlinks/plugins/sound_generator/ios`)
 
 SPEC REPOS:
@@ -21,14 +24,17 @@ SPEC REPOS:
 EXTERNAL SOURCES:
   Flutter:
     :path: Flutter
+  integration_test:
+    :path: ".symlinks/plugins/integration_test/ios"
   sound_generator:
     :path: ".symlinks/plugins/sound_generator/ios"
 
 SPEC CHECKSUMS:
   AudioKit: 57cc61d708f085763a031e5c3f87adae21dc4b59
-  Flutter: 434fef37c0980e73bb6479ef766c45957d4b510c
-  sound_generator: b182ddad2c3c4d6243a8dbaf6e4975974d27c40f
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
+  sound_generator: f290d5e2cfbf92f60789d2b86cd25f22ad379717
 
-PODFILE CHECKSUM: 0a1da3e36b82927f963e5c2f6f6ba6efed8794eb
+PODFILE CHECKSUM: 0b0cb0160310c736060c862ad3e5f66e1cefe604
 
-COCOAPODS: 1.10.1
+COCOAPODS: 1.16.2
