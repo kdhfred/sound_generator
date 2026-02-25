@@ -1,25 +1,14 @@
 PODS:
-  - AudioKit (4.11.2):
-    - AudioKit/Core (= 4.11.2)
-    - AudioKit/UI (= 4.11.2)
-  - AudioKit/Core (4.11.2)
-  - AudioKit/UI (4.11.2):
-    - AudioKit/Core
   - Flutter (1.0.0)
   - integration_test (0.0.1):
     - Flutter
-  - sound_generator (0.0.11):
-    - AudioKit (< 5)
+  - sound_generator (0.0.12):
     - Flutter
 
 DEPENDENCIES:
   - Flutter (from `Flutter`)
   - integration_test (from `.symlinks/plugins/integration_test/ios`)
   - sound_generator (from `.symlinks/plugins/sound_generator/ios`)
-
-SPEC REPOS:
-  trunk:
-    - AudioKit
 
 EXTERNAL SOURCES:
   Flutter:
@@ -30,10 +19,9 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/sound_generator/ios"
 
 SPEC CHECKSUMS:
-  AudioKit: 57cc61d708f085763a031e5c3f87adae21dc4b59
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
-  sound_generator: f290d5e2cfbf92f60789d2b86cd25f22ad379717
+  sound_generator: 6e2c7a29ba2554a749e1cca20fbaaae508bd94ad
 
 PODFILE CHECKSUM: 0b0cb0160310c736060c862ad3e5f66e1cefe604
 
