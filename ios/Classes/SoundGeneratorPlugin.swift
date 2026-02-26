@@ -119,6 +119,23 @@ public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
     self.engine = nil
     self.phase = 0.0
 
+    // Only store sampleRate here. The actual AVAudioEngine and AVAudioSession
+    // are created lazily in ensureEngine(), called from startPlaying().
+    result(true)
+  }
+
+  /// Creates the AVAudioEngine and AVAudioSession if not already running.
+  private func ensureEngine() throws {
+    if let engine = self.engine, engine.isRunning { return }
+
+    // Clean up stale engine if it exists but isn't running
+    if let sourceNode = self.sourceNode, let engine = self.engine {
+      engine.detach(sourceNode)
+    }
+    self.sourceNode = nil
+    self.engine = nil
+    self.phase = 0.0
+
     let engine = AVAudioEngine()
     let sampleRate = Double(self.sampleRate)
 
@@ -167,19 +184,15 @@ public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
 
     engine.attach(sourceNode)
     engine.connect(sourceNode, to: engine.mainMixerNode, format: format)
+    engine.mainMixerNode.outputVolume = 0
 
     self.sourceNode = sourceNode
     self.engine = engine
 
-    do {
-      let session = AVAudioSession.sharedInstance()
-      try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
-      try session.setActive(true)
-      try engine.start()
-      result(true)
-    } catch {
-      result(FlutterError(code: "init_error", message: "Unable to start audio engine", details: error.localizedDescription))
-    }
+    let session = AVAudioSession.sharedInstance()
+    try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+    try session.setActive(true)
+    try engine.start()
   }
 
   private func releaseEngine(result: FlutterResult?) {
@@ -205,8 +218,10 @@ public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
   }
 
   private func startPlaying(result: FlutterResult) {
-    guard self.engine != nil else {
-      result(FlutterError(code: "not_initialized", message: "Sound generator not initialized", details: nil))
+    do {
+      try ensureEngine()
+    } catch {
+      result(FlutterError(code: "engine_error", message: "Unable to start audio engine", details: error.localizedDescription))
       return
     }
     self.engine?.mainMixerNode.outputVolume = Float(self.volume)
@@ -216,10 +231,6 @@ public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
   }
 
   private func stopPlaying(result: FlutterResult) {
-    guard self.engine != nil else {
-      result(FlutterError(code: "not_initialized", message: "Sound generator not initialized", details: nil))
-      return
-    }
     self.engine?.mainMixerNode.outputVolume = 0
     self.isPlaying = false
     onChangeIsPlaying?.sendEvent(event: false)
@@ -227,19 +238,11 @@ public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
   }
 
   private func setFrequency(_ args: [String: Any], result: FlutterResult) {
-    guard self.engine != nil else {
-      result(FlutterError(code: "not_initialized", message: "Sound generator not initialized", details: nil))
-      return
-    }
     self.frequency = args["frequency"] as? Double ?? 400.0
     result(nil)
   }
 
   private func setWaveform(_ args: [String: Any], result: FlutterResult) {
-    guard self.engine != nil else {
-      result(FlutterError(code: "not_initialized", message: "Sound generator not initialized", details: nil))
-      return
-    }
     let waveType = args["waveType"] as? String ?? "SINUSOIDAL"
     switch waveType {
     case "SINUSOIDAL":
@@ -257,19 +260,11 @@ public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
   }
 
   private func setBalance(_ args: [String: Any], result: FlutterResult) {
-    guard self.engine != nil else {
-      result(FlutterError(code: "not_initialized", message: "Sound generator not initialized", details: nil))
-      return
-    }
     self.pan = args["balance"] as? Double ?? 0.0
     result(nil)
   }
 
   private func setVolume(_ args: [String: Any], result: FlutterResult) {
-    guard self.engine != nil else {
-      result(FlutterError(code: "not_initialized", message: "Sound generator not initialized", details: nil))
-      return
-    }
     self.volume = args["volume"] as? Double ?? 1.0
     if isPlaying {
       self.engine?.mainMixerNode.outputVolume = Float(self.volume)
@@ -278,18 +273,10 @@ public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
   }
 
   private func getVolume(result: FlutterResult) {
-    guard self.engine != nil else {
-      result(FlutterError(code: "not_initialized", message: "Sound generator not initialized", details: nil))
-      return
-    }
     result(self.volume)
   }
 
   private func setDecibel(_ args: [String: Any], result: FlutterResult) {
-    guard self.engine != nil else {
-      result(FlutterError(code: "not_initialized", message: "Sound generator not initialized", details: nil))
-      return
-    }
     self.volume = pow(10, (args["decibel"] as? Double ?? 0.0) / 20.0)
     if isPlaying {
       self.engine?.mainMixerNode.outputVolume = Float(self.volume)
@@ -298,10 +285,6 @@ public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
   }
 
   private func getDecibel(result: FlutterResult) {
-    guard self.engine != nil else {
-      result(FlutterError(code: "not_initialized", message: "Sound generator not initialized", details: nil))
-      return
-    }
     result(self.volume)
   }
 }
