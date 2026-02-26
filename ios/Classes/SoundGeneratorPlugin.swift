@@ -15,7 +15,9 @@ public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
 
   // Oscillator state (accessed from audio render thread)
   private var frequency: Double = 440.0
-  private var volume: Double = 1.0
+  private var volume: Double = 1.0       // user-set volume level
+  private var targetVolume: Double = 0.0  // what render thread ramps toward
+  private var currentVolume: Double = 0.0 // render thread's smoothed volume
   private var pan: Double = 0.0 // -1.0 to 1.0
   private var waveformIndex: Int = 0 // 0=sine, 1=square, 2=triangle, 3=sawtooth
   private var phase: Double = 0.0
@@ -139,18 +141,29 @@ public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
     let engine = AVAudioEngine()
     let sampleRate = Double(self.sampleRate)
 
+    // Volume ramp speed: traverse full 0→1 range in ~10ms
+    let rampSpeed = 1.0 / (sampleRate * 0.01)
+
     let sourceNode = AVAudioSourceNode { [weak self] _, _, frameCount, audioBufferList -> OSStatus in
       guard let self = self else { return noErr }
 
       let ablPointer = UnsafeMutableAudioBufferListPointer(audioBufferList)
       let freq = self.frequency
-      let vol = self.volume
+      let target = self.targetVolume
+      var vol = self.currentVolume
       let pan = self.pan
       var currentPhase = self.phase
 
       let phaseIncrement = freq / sampleRate
 
       for frame in 0..<Int(frameCount) {
+        // Per-sample volume ramp to avoid clicks
+        if vol < target {
+          vol = min(vol + rampSpeed, target)
+        } else if vol > target {
+          vol = max(vol - rampSpeed, target)
+        }
+
         let sample = self.generateSample(phase: currentPhase) * vol
 
         // Stereo panning: equal-power panning
@@ -176,6 +189,7 @@ public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
         }
       }
 
+      self.currentVolume = vol
       self.phase = currentPhase
       return noErr
     }
@@ -184,7 +198,7 @@ public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
 
     engine.attach(sourceNode)
     engine.connect(sourceNode, to: engine.mainMixerNode, format: format)
-    engine.mainMixerNode.outputVolume = 0
+    engine.mainMixerNode.outputVolume = 1.0
 
     self.sourceNode = sourceNode
     self.engine = engine
@@ -197,7 +211,8 @@ public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
 
   private func releaseEngine(result: FlutterResult?) {
     if isPlaying {
-      self.engine?.mainMixerNode.outputVolume = 0
+      self.targetVolume = 0
+      self.currentVolume = 0
       self.isPlaying = false
       onChangeIsPlaying?.sendEvent(event: false)
     }
@@ -224,14 +239,14 @@ public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
       result(FlutterError(code: "engine_error", message: "Unable to start audio engine", details: error.localizedDescription))
       return
     }
-    self.engine?.mainMixerNode.outputVolume = Float(self.volume)
+    self.targetVolume = self.volume
     self.isPlaying = true
     onChangeIsPlaying?.sendEvent(event: true)
     result(nil)
   }
 
   private func stopPlaying(result: FlutterResult) {
-    self.engine?.mainMixerNode.outputVolume = 0
+    self.targetVolume = 0
     self.isPlaying = false
     onChangeIsPlaying?.sendEvent(event: false)
     result(nil)
@@ -267,7 +282,7 @@ public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
   private func setVolume(_ args: [String: Any], result: FlutterResult) {
     self.volume = args["volume"] as? Double ?? 1.0
     if isPlaying {
-      self.engine?.mainMixerNode.outputVolume = Float(self.volume)
+      self.targetVolume = self.volume
     }
     result(nil)
   }
@@ -279,7 +294,7 @@ public class SwiftSoundGeneratorPlugin: NSObject, FlutterPlugin {
   private func setDecibel(_ args: [String: Any], result: FlutterResult) {
     self.volume = pow(10, (args["decibel"] as? Double ?? 0.0) / 20.0)
     if isPlaying {
-      self.engine?.mainMixerNode.outputVolume = Float(self.volume)
+      self.targetVolume = self.volume
     }
     result(nil)
   }
