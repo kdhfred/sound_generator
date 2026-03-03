@@ -7,12 +7,10 @@ import io.flutter.plugin.common.EventChannel;
 public class getOneCycleDataHandler implements EventChannel.StreamHandler {
     public static final String NATIVE_CHANNEL_EVENT = "io.github.mertguner.sound_generator/onOneCycleDataHandler";
     private volatile static getOneCycleDataHandler mEventManager;
-    EventChannel.EventSink eventSink;
+    private volatile EventChannel.EventSink eventSink;
 
-    public getOneCycleDataHandler()
-    {
-        if(mEventManager == null)
-            mEventManager = this;
+    public getOneCycleDataHandler() {
+        mEventManager = this;
     }
 
     @Override
@@ -21,15 +19,18 @@ public class getOneCycleDataHandler implements EventChannel.StreamHandler {
     }
 
     public static void setData(List<Integer> value) {
-        if (mEventManager != null)
-            if (mEventManager.eventSink != null)
-                    mEventManager.eventSink.success(value);
+        // Capture local references to avoid TOCTOU race
+        getOneCycleDataHandler manager = mEventManager;
+        if (manager != null) {
+            EventChannel.EventSink sink = manager.eventSink;
+            if (sink != null) {
+                sink.success(value);
+            }
+        }
     }
+
     @Override
     public void onCancel(Object o) {
-        if (this.eventSink != null) {
-            this.eventSink.endOfStream();
-            this.eventSink = null;
-        }
+        this.eventSink = null;
     }
 }

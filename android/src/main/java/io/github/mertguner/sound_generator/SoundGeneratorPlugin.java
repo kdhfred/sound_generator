@@ -12,9 +12,6 @@ import io.github.mertguner.sound_generator.handlers.getOneCycleDataHandler;
 import io.github.mertguner.sound_generator.handlers.isPlayingStreamHandler;
 import io.github.mertguner.sound_generator.models.WaveTypes;
 
-/**
- * SoundGeneratorPlugin
- */
 public class SoundGeneratorPlugin implements FlutterPlugin, MethodCallHandler {
     private MethodChannel channel;
     private EventChannel onChangeIsPlayingChannel;
@@ -50,55 +47,66 @@ public class SoundGeneratorPlugin implements FlutterPlugin, MethodCallHandler {
                 break;
             case "release":
                 soundGenerator.release();
+                result.success(null);
                 break;
             case "play":
                 soundGenerator.startPlayback();
+                result.success(null);
                 break;
             case "stop":
                 soundGenerator.stopPlayback();
+                result.success(null);
                 break;
             case "isPlaying":
                 result.success(soundGenerator.isPlaying());
                 break;
             case "dB":
-                result.success(soundGenerator.getDecibel());
+                result.success((double) soundGenerator.getDecibel());
                 break;
             case "volume":
-                result.success(soundGenerator.getVolume());
+                result.success((double) soundGenerator.getVolume());
                 break;
             case "setAutoUpdateOneCycleSample":
                 boolean autoUpdateOneCycleSample = call.argument("autoUpdateOneCycleSample");
                 soundGenerator.setAutoUpdateOneCycleSample(autoUpdateOneCycleSample);
+                result.success(null);
                 break;
             case "setFrequency":
                 double frequency = call.argument("frequency");
                 soundGenerator.setFrequency((float) frequency);
+                result.success(null);
                 break;
             case "setWaveform":
                 String waveType = call.argument("waveType");
                 soundGenerator.setWaveform(WaveTypes.valueOf(waveType));
+                result.success(null);
                 break;
             case "setBalance":
                 double balance = call.argument("balance");
                 soundGenerator.setBalance((float) balance);
+                result.success(null);
                 break;
             case "setVolume":
                 double volume = call.argument("volume");
                 soundGenerator.setVolume((float) volume, true);
+                result.success(null);
                 break;
             case "setDecibel":
                 double dB = call.argument("dB");
                 soundGenerator.setDecibel((float) dB);
+                result.success(null);
                 break;
             case "getSampleRate":
                 result.success(soundGenerator.getSampleRate());
                 break;
             case "refreshOneCycleData":
                 soundGenerator.refreshOneCycleData();
+                result.success(null);
                 break;
             case "setCleanStart":
                 boolean cleanStart = call.argument("cleanStart");
                 soundGenerator.setCleanStart(cleanStart);
+                result.success(null);
                 break;
             default:
                 result.notImplemented();

@@ -6,12 +6,10 @@ import io.flutter.plugin.common.EventChannel.StreamHandler;
 public class isPlayingStreamHandler implements StreamHandler {
     public static final String NATIVE_CHANNEL_EVENT = "io.github.mertguner.sound_generator/onChangeIsPlaying";
     private volatile static isPlayingStreamHandler mEventManager;
-    EventSink eventSink;
+    private volatile EventSink eventSink;
 
-    public isPlayingStreamHandler()
-    {
-        if(mEventManager == null)
-            mEventManager = this;
+    public isPlayingStreamHandler() {
+        mEventManager = this;
     }
 
     @Override
@@ -20,16 +18,18 @@ public class isPlayingStreamHandler implements StreamHandler {
     }
 
     public static void change(boolean value) {
-        if(mEventManager != null)
-        if (mEventManager.eventSink != null)
-            mEventManager.eventSink.success(Boolean.valueOf(value));
+        // Capture local references to avoid TOCTOU race
+        isPlayingStreamHandler manager = mEventManager;
+        if (manager != null) {
+            EventSink sink = manager.eventSink;
+            if (sink != null) {
+                sink.success(Boolean.valueOf(value));
+            }
+        }
     }
 
     @Override
     public void onCancel(Object o) {
-        if (this.eventSink != null) {
-            this.eventSink.endOfStream();
-            this.eventSink = null;
-        }
+        this.eventSink = null;
     }
 }
